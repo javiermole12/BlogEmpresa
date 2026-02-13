@@ -1,4 +1,9 @@
-<?php include_once 'conexion.php'; ?>
+<?php 
+// CORRECCIÓN IMPORTANTE:
+// Usamos __DIR__ para que PHP busque conexion.php DENTRO de la carpeta 'includes',
+// sin importar desde dónde se esté llamando a este header.
+include_once __DIR__ . '/conexion.php'; 
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -66,7 +71,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         <?php 
-        // Limpiar el mensaje después de mostrarlo
         unset($_SESSION['mensaje']); 
         unset($_SESSION['tipo_mensaje']);
         ?>

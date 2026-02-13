@@ -25,5 +25,5 @@ mysqli_set_charset($conn, "utf8");
 
 // Definir la ruta raíz del proyecto (AJUSTA ESTO SI TU CARPETA SE LLAMA DISTINTO)
 // Esto es vital para que los enlaces funcionen desde la carpeta /admin/ también
-define('BASE_URL', 'http://localhost/blog_empresa/');
+define('BASE_URL', 'http://localhost/blogEmpresa/');
 ?>
