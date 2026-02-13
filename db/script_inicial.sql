@@ -38,9 +38,9 @@ CREATE TABLE posts (
 -- El hash generado abajo ($2y$10$...) es la versión encriptada de "1234"
 
 INSERT INTO usuarios (nombre, email, password, rol, cargo, avatar) VALUES 
-('Admin Jefe', 'admin@empresa.com', '$2y$10$TKh8H1.PfQx37YgCzwiKb.KjNyWgaHb9cbcoQgdIVFlYg7B77UdFm', 'admin', 'SysAdmin', 'admin.png'),
-('Usuario A', 'userA@empresa.com', '$2y$10$TKh8H1.PfQx37YgCzwiKb.KjNyWgaHb9cbcoQgdIVFlYg7B77UdFm', 'empleado', 'Redactor Jefe', 'userA.png'),
-('Usuario B', 'userB@empresa.com', '$2y$10$TKh8H1.PfQx37YgCzwiKb.KjNyWgaHb9cbcoQgdIVFlYg7B77UdFm', 'empleado', 'Editor Junior', 'userB.png');
+('Admin Jefe', 'admin@empresa.com', '$2y$10$ErZRqlssHUC8nWBehkHcc.qRFaC5jJH4LoHjkW8YeNQOts0gPHovC', 'admin', 'SysAdmin', 'admin.png'),
+('Usuario A', 'userA@empresa.com', '$2y$10$ErZRqlssHUC8nWBehkHcc.qRFaC5jJH4LoHjkW8YeNQOts0gPHovC', 'empleado', 'Redactor Jefe', 'userA.png'),
+('Usuario B', 'userB@empresa.com', '$2y$10$ErZRqlssHUC8nWBehkHcc.qRFaC5jJH4LoHjkW8YeNQOts0gPHovC', 'empleado', 'Editor Junior', 'userB.png');
 
 -- 5. DATOS DE PRUEBA PARA POSTS
 INSERT INTO posts (titulo, contenido, autor_id, fecha_publicacion) VALUES 
