@@ -18,8 +18,7 @@ $id_post = $_GET['id'];
 $errores = [];
 $exito = false;
 
-// 2. OBTENER DATOS ACTUALES DEL POST (Para verificar permisos y rellenar form)
-// Usamos prepared statements por seguridad
+// 2. OBTENER DATOS ACTUALES DEL POST
 $sql_check = "SELECT * FROM posts WHERE id = ?";
 $stmt = mysqli_prepare($conn, $sql_check);
 mysqli_stmt_bind_param($stmt, "i", $id_post);
@@ -27,30 +26,28 @@ mysqli_stmt_execute($stmt);
 $resultado = mysqli_stmt_get_result($stmt);
 $post_actual = mysqli_fetch_assoc($resultado);
 
-// Verificar si existe el post
+// Verificar si existe
 if (!$post_actual) {
     header("Location: index.php");
     exit();
 }
 
 // 3. VERIFICACIÓN CRÍTICA DE PERMISOS (AUDITORÍA)
-// Solo el Autor O el Admin pueden editar
 $es_autor = ($post_actual['autor_id'] == $_SESSION['usuario_id']);
 $es_admin = ($_SESSION['rol'] == 'admin');
 
 if (!$es_autor && !$es_admin) {
-    // Si intenta entrar un usuario listo cambiando la URL, lo echamos
     die("❌ ACCESO DENEGADO: No tienes permisos para editar este contenido.");
 }
 
 // 4. PROCESAR EL FORMULARIO (UPDATE)
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
-    // Recoger datos nuevos
+    // Recoger datos
     $titulo = trim($_POST['titulo']);
     $contenido = trim($_POST['contenido']);
     
-    // Validaciones
+    // Validaciones básicas
     if (empty($titulo)) $errores[] = "El título es obligatorio.";
     if (empty($contenido)) $errores[] = "El contenido es obligatorio.";
 
@@ -60,26 +57,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Si suben una nueva imagen...
     if (isset($_FILES['imagen']) && !empty($_FILES['imagen']['name'])) {
         $archivo = $_FILES['imagen'];
-        $tipo = $archivo['type'];
         $tmp = $archivo['tmp_name'];
         
+        // SEGURIDAD: Validar tipo real del archivo
+        $mime_real = mime_content_type($tmp);
         $permitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-        if (in_array($tipo, $permitidos)) {
-            // Generar nuevo nombre
-            $nombre_nuevo = "post_" . $_SESSION['usuario_id'] . "_" . time() . ".jpg";
+        if (in_array($mime_real, $permitidos)) {
+            
+            // Obtener extensión real del archivo subido
+            $extension = pathinfo($archivo['name'], PATHINFO_EXTENSION);
+
+            // Generar nuevo nombre único
+            $nombre_nuevo = "post_" . $_SESSION['usuario_id'] . "_" . time() . "." . $extension;
             
             // Subir la nueva
             if (move_uploaded_file($tmp, 'assets/img/posts/' . $nombre_nuevo)) {
                 $nombre_imagen = $nombre_nuevo;
                 
-                // OPCIONAL: Borrar la imagen vieja del servidor para no acumular basura
-                // if (!empty($post_actual['imagen']) && file_exists('assets/img/posts/'.$post_actual['imagen'])) {
-                //     unlink('assets/img/posts/'.$post_actual['imagen']);
-                // }
+                // (Opcional) Borrar imagen antigua si existe y no es la default
+                /*
+                if (!empty($post_actual['imagen']) && file_exists('assets/img/posts/'.$post_actual['imagen'])) {
+                     unlink('assets/img/posts/'.$post_actual['imagen']);
+                }
+                */
+            } else {
+                $errores[] = "Error al mover el archivo al servidor.";
             }
         } else {
-            $errores[] = "Formato de imagen no válido.";
+            $errores[] = "Formato de imagen no válido (Detectado: $mime_real).";
         }
     }
 
@@ -92,14 +98,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         if (mysqli_stmt_execute($stmt_up)) {
             $exito = true;
-            // Actualizamos la variable $post_actual para que el formulario muestre los cambios al instante
+            
+            // Actualizamos la variable $post_actual para ver los cambios al momento
             $post_actual['titulo'] = $titulo;
             $post_actual['contenido'] = $contenido;
             $post_actual['imagen'] = $nombre_imagen;
             
-            header("refresh:2;url=post.php?id=$id_post"); // Volver al post tras 2 seg
+            // Recargar la página a los 2 segundos
+            header("refresh:2;url=post.php?id=$id_post"); 
         } else {
-            $errores[] = "Error al actualizar: " . mysqli_error($conn);
+            $errores[] = "Error al actualizar en BD: " . mysqli_error($conn);
         }
     }
 }
@@ -145,13 +153,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="mb-4">
                             <label class="form-label fw-bold">Imagen Destacada</label>
                             
-                            <?php if (!empty($post_actual['imagen'])): ?>
-                                <div class="mb-2 p-2 border rounded bg-light text-center">
-                                    <p class="small text-muted mb-1">Imagen Actual:</p>
-                                    <img src="assets/img/posts/<?php echo $post_actual['imagen']; ?>" 
-                                         alt="Actual" style="max-height: 150px; border-radius: 5px;">
-                                </div>
-                            <?php endif; ?>
+                            <?php 
+                                // Lógica segura para mostrar imagen
+                                $img_mostrar = 'assets/img/posts/default.png';
+                                if (!empty($post_actual['imagen']) && file_exists('assets/img/posts/' . $post_actual['imagen'])) {
+                                    $img_mostrar = 'assets/img/posts/' . $post_actual['imagen'];
+                                }
+                            ?>
+                            
+                            <div class="mb-2 p-2 border rounded bg-light text-center">
+                                <p class="small text-muted mb-1">Imagen Actual:</p>
+                                <img src="<?php echo $img_mostrar; ?>" alt="Actual" style="max-height: 150px; border-radius: 5px;">
+                            </div>
 
                             <input type="file" name="imagen" class="form-control" accept="image/*">
                             <div class="form-text">Sube una nueva solo si quieres cambiar la actual.</div>

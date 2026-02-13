@@ -46,13 +46,17 @@ include 'includes/header.php';
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card h-100 shadow-sm hover-shadow transition">
                         
-                        <?php if (!empty($post['imagen']) && file_exists('assets/img/posts/' . $post['imagen'])): ?>
-                            <img src="assets/img/posts/<?php echo $post['imagen']; ?>" class="card-img-top" alt="Imagen del post" style="height: 200px; object-fit: cover;">
-                        <?php else: ?>
-                            <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">
-                                <span class="fs-1">🏢</span>
-                            </div>
-                        <?php endif; ?>
+                        <?php 
+    // 1. Definimos la imagen por defecto
+    $ruta_imagen = 'assets/img/posts/default.png';
+
+    // 2. Comprobamos si el post tiene imagen Y si el archivo existe físicamente
+    if (!empty($post['imagen']) && file_exists('assets/img/posts/' . $post['imagen'])) {
+        $ruta_imagen = 'assets/img/posts/' . $post['imagen'];
+    }
+?>
+
+<img src="<?php echo $ruta_imagen; ?>" class="card-img-top" alt="Imagen del post" style="height: 200px; object-fit: cover;">
 
                         <div class="card-body">
                             <h5 class="card-title fw-bold">

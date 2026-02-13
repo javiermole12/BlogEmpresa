@@ -2,7 +2,7 @@
 // 1. SEGURIDAD Y CONEXIÓN
 require_once 'includes/conexion.php';
 
-// Verificar si el usuario está logueado (Si no, patada al login)
+// Verificar si el usuario está logueado
 if (!isset($_SESSION['usuario_id'])) {
     header("Location: login.php");
     exit();
@@ -17,56 +17,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Recoger y limpiar datos
     $titulo = trim($_POST['titulo']);
     $contenido = trim($_POST['contenido']);
-    $autor_id = $_SESSION['usuario_id']; // EL AUTOR ES EL QUE ESTÁ LOGUEADO
+    $autor_id = $_SESSION['usuario_id'];
 
     // Validaciones
     if (empty($titulo)) { $errores[] = "El título es obligatorio."; }
     if (empty($contenido)) { $errores[] = "El contenido no puede estar vacío."; }
 
-    // -- LOGICA DE IMAGEN (Opcional) --
-    $nombre_imagen = null; // Por defecto null
+    // -- LOGICA DE IMAGEN --
+    $nombre_imagen = null; // Por defecto null (si no suben nada)
 
     if (isset($_FILES['imagen']) && !empty($_FILES['imagen']['name'])) {
         $archivo = $_FILES['imagen'];
-        $tipo = $archivo['type'];
         $tmp = $archivo['tmp_name'];
 
-        // Validar tipo de archivo (Seguridad: Solo imágenes)
+        // MEJORA DE SEGURIDAD (Auditoría):
+        // No confiamos en $_FILES['type'], usamos mime_content_type para ver el archivo real
+        $mime_real = mime_content_type($tmp);
         $permitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         
-        if (in_array($tipo, $permitidos)) {
+        if (in_array($mime_real, $permitidos)) {
+            
             // Crear carpeta si no existe
             if (!is_dir('assets/img/posts')) {
                 mkdir('assets/img/posts', 0777, true);
             }
 
-            // Renombrar archivo para evitar duplicados y caracteres raros
-            // Ejemplo: post_5_16978322.jpg
-            $nombre_imagen = "post_" . $autor_id . "_" . time() . ".jpg";
+            // Generar extensión correcta basada en el archivo real
+            // Esto evita que suban un .php renombrado a .jpg
+            $extension = pathinfo($archivo['name'], PATHINFO_EXTENSION);
+            
+            // Renombrar archivo único
+            $nombre_imagen = "post_" . $autor_id . "_" . time() . "." . $extension;
             
             // Mover archivo
-            move_uploaded_file($tmp, 'assets/img/posts/' . $nombre_imagen);
+            if (!move_uploaded_file($tmp, 'assets/img/posts/' . $nombre_imagen)) {
+                $errores[] = "Error al mover la imagen a la carpeta.";
+            }
+
         } else {
-            $errores[] = "El archivo no es una imagen válida (solo JPG, PNG, GIF).";
+            $errores[] = "El archivo no es una imagen válida (Detectado: $mime_real).";
         }
     }
 
     // 3. INSERTAR EN BASE DE DATOS
     if (empty($errores)) {
-        // Usamos Sentencias Preparadas (Evita inyección SQL en el contenido)
         $sql = "INSERT INTO posts (titulo, contenido, imagen, autor_id, fecha_publicacion) VALUES (?, ?, ?, ?, NOW())";
         
         $stmt = mysqli_prepare($conn, $sql);
-        // "ssss" -> String, String, String, Integer (pero autor_id pasa como int, cuidado con el tipo)
-        // Corrección: el ID es int, así que "sssi"
+        // sssi: string, string, string (puede ser null), integer
         mysqli_stmt_bind_param($stmt, "sssi", $titulo, $contenido, $nombre_imagen, $autor_id);
         
         if (mysqli_stmt_execute($stmt)) {
             $exito = true;
-            // Redirigir al index después de 1 segundo para ver el post
+            // Redirigir
             header("refresh:2;url=index.php"); 
         } else {
-            $errores[] = "Error al guardar el post: " . mysqli_error($conn);
+            $errores[] = "Error de base de datos: " . mysqli_error($conn);
         }
         mysqli_stmt_close($stmt);
     }
