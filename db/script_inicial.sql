@@ -30,6 +30,17 @@ CREATE TABLE posts (
     FOREIGN KEY (autor_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
+-- 3. TABLA DE COMENTARIOS EN LOS POSTS
+CREATE TABLE comentarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    autor_id INT NOT NULL,
+    contenido TEXT NOT NULL,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (autor_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
 -- 4. USUARIOS DE PRUEBA
 -- Contraseña para todos: "1234"
 -- NOTA: Usamos 'default.png' para evitar errores visuales si no tienes fotos reales preparadas.

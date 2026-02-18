@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $archivo = $_FILES['avatar'];
         $nombre_archivo = $archivo['name'];
         $tipo = $archivo['type'];
-        $tmp_name = $archivo['tmp_name']; // Ruta temporal donde PHP guarda el archivo
+        $tmp_name = $archivo['tmp_name'];
 
         // Validar que sea una imagen
         if ($tipo == "image/jpg" || $tipo == "image/jpeg" || $tipo == "image/png" || $tipo == "image/gif") {
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 mkdir('assets/img/avatars', 0777, true);
             }
 
-            // Generar nombre único para evitar sobrescribir (ej: avatar_15_time.jpg)
+            // Generar nombre único para evitar sobrescribir
             $avatar_nombre = "avatar_" . $id_usuario . "_" . time() . ".jpg";
             
             // Mover el archivo de la carpeta temporal a la nuestra
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         if ($guardar) {
-            // Actualizar la sesión para que los cambios se vean al momento en el header
+            // Actualizar la sesión
             $_SESSION['nombre'] = $nombre;
             $_SESSION['avatar'] = $avatar_nombre;
             
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// 3. OBTENER DATOS ACTUALES DEL USUARIO (Para rellenar el formulario)
+// 3. OBTENER DATOS ACTUALES DEL USUARIO
 $sql_user = "SELECT * FROM usuarios WHERE id = $id_usuario";
 $res_user = mysqli_query($conn, $sql_user);
 $usuario = mysqli_fetch_assoc($res_user);
@@ -87,106 +87,118 @@ $usuario = mysqli_fetch_assoc($res_user);
 
 <?php include 'includes/header.php'; ?>
 
-<div class="container py-5">
-    <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="card shadow">
-                <div class="card-body text-center">
+<div class="bg-light pb-5 pt-4 mb-5 border-bottom">
+    <div class="container">
+        <h2 class="fw-bold text-dark mb-0">Configuración de Perfil</h2>
+        <p class="text-muted">Gestiona tu información personal y credenciales de acceso.</p>
+    </div>
+</div>
+
+<div class="container" style="margin-top: -3rem;">
+    
+    <?php if(!empty($mensaje)): ?>
+        <div class="alert alert-<?= $tipo_mensaje ?> alert-dismissible fade show shadow-sm mb-4" role="alert">
+            <?php echo $tipo_mensaje == 'success' ? '✅' : '⚠️'; ?> <?= $mensaje ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
+                
+                <div class="bg-primary" style="height: 100px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);"></div>
+                
+                <div class="card-body text-center position-relative pt-0">
+                    
                     <?php 
                         $ruta_avatar = 'assets/img/avatars/' . $usuario['avatar'];
                         if (!file_exists($ruta_avatar) || empty($usuario['avatar'])) {
-                            $ruta_avatar = 'assets/img/avatars/default.png'; // Imagen por defecto si falla
-                            // Truco: Puedes usar una url externa si no tienes imagen local aún
-                            // $ruta_avatar = "https://ui-avatars.com/api/?name=".$usuario['nombre'];
+                            // Uso de UI Avatars como fallback elegante si no hay foto
+                            $ruta_avatar = "https://ui-avatars.com/api/?name=".urlencode($usuario['nombre'])."&background=e9ecef&color=0d6efd&size=200";
                         }
                     ?>
-                    <img src="<?php echo $ruta_avatar; ?>" alt="Avatar" class="rounded-circle img-fluid mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #eee;">
                     
-                    <h5 class="my-3"><?php echo htmlspecialchars($usuario['nombre']); ?></h5>
-                    <p class="text-muted mb-1"><?php echo htmlspecialchars($usuario['cargo']); ?></p>
-                    <p class="text-muted mb-4 font-size-sm">Rol: <strong><?php echo strtoupper($usuario['rol']); ?></strong></p>
+                    <div class="d-inline-block position-relative" style="margin-top: -50px;">
+                        <img src="<?php echo $ruta_avatar; ?>" alt="Avatar de <?php echo htmlspecialchars($usuario['nombre']); ?>" 
+                             class="rounded-circle bg-white p-1 shadow-sm" 
+                             style="width: 120px; height: 120px; object-fit: cover;">
+                    </div>
                     
-                    <?php if($usuario['rol'] == 'admin'): ?>
-                        <div class="alert alert-info py-2" style="font-size: 0.9rem;">
-                            👑 Tienes privilegios de Administrador
-                        </div>
-                    <?php endif; ?>
+                    <h4 class="fw-bold mt-3 mb-1"><?php echo htmlspecialchars($usuario['nombre']); ?></h4>
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill mb-3">
+                        <?php echo htmlspecialchars($usuario['cargo']); ?>
+                    </span>
+                    
+                    <ul class="list-group list-group-flush text-start mt-4 border-top pt-3">
+                        <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">✉️ Email Corporativo</span>
+                            <span class="small fw-medium"><?php echo htmlspecialchars($usuario['email']); ?></span>
+                        </li>
+                        <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">🔐 Nivel de Acceso</span>
+                            <?php if($usuario['rol'] == 'admin'): ?>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Administrador</span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary">Empleado</span>
+                            <?php endif; ?>
+                        </li>
+                        <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">📅 Fecha de Ingreso</span>
+                            <span class="small"><?php echo date("d/m/Y", strtotime($usuario['fecha_registro'] ?? 'now')); ?></span>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
 
         <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-white border-bottom">
-                    <h5 class="mb-0 text-primary">✏️ Editar Información</h5>
-                </div>
-                <div class="card-body">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4 p-md-5">
                     
-                    <?php if(!empty($mensaje)): ?>
-                        <div class="alert alert-<?= $tipo_mensaje ?> alert-dismissible fade show" role="alert">
-                            <?= $mensaje ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    <?php endif; ?>
+                    <h5 class="fw-bold mb-4 border-bottom pb-3">Actualizar Datos</h5>
 
                     <form action="perfil.php" method="POST" enctype="multipart/form-data">
                         
-                        <div class="row mb-3">
-                            <div class="col-sm-3">
-                                <h6 class="mb-0 mt-2">Nombre Completo</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Nombre Completo</label>
+                                <input type="text" name="nombre" class="form-control bg-light" value="<?php echo htmlspecialchars($usuario['nombre']); ?>" required>
                             </div>
-                            <div class="col-sm-9 text-secondary">
-                                <input type="text" name="nombre" class="form-control" value="<?php echo htmlspecialchars($usuario['nombre']); ?>" required>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Email</label>
+                                <input type="email" name="email" class="form-control bg-light" value="<?php echo htmlspecialchars($usuario['email']); ?>" required>
                             </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-sm-3">
-                                <h6 class="mb-0 mt-2">Email</h6>
-                            </div>
-                            <div class="col-sm-9 text-secondary">
-                                <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($usuario['email']); ?>" required>
+                            <div class="col-md-12">
+                                <label class="form-label text-muted small fw-bold">Cargo / Departamento</label>
+                                <input type="text" name="cargo" class="form-control bg-light" value="<?php echo htmlspecialchars($usuario['cargo']); ?>">
                             </div>
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-sm-3">
-                                <h6 class="mb-0 mt-2">Cargo / Puesto</h6>
+                        <div class="mb-4 bg-light p-3 rounded-3 border">
+                            <label class="form-label text-muted small fw-bold d-block">Cambiar Fotografía</label>
+                            <div class="input-group">
+                                <input type="file" name="avatar" class="form-control" id="avatarInput" accept="image/png, image/jpeg, image/jpg">
                             </div>
-                            <div class="col-sm-9 text-secondary">
-                                <input type="text" name="cargo" class="form-control" value="<?php echo htmlspecialchars($usuario['cargo']); ?>">
-                            </div>
+                            <div class="form-text mt-2">Recomendado: Imagen cuadrada (1:1). Formatos: JPG, PNG. Máx 2MB.</div>
                         </div>
 
-                        <hr>
-
-                        <div class="row mb-3">
-                            <div class="col-sm-3">
-                                <h6 class="mb-0 mt-2">Cambiar Avatar</h6>
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-bold text-danger">Seguridad de la Cuenta</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text bg-light border-end-0">🔑</span>
+                                <input type="password" name="password" class="form-control border-start-0 ps-0" placeholder="Nueva contraseña (dejar en blanco para no cambiar)">
                             </div>
-                            <div class="col-sm-9 text-secondary">
-                                <input type="file" name="avatar" class="form-control" accept="image/*">
-                                <small class="text-muted">Formatos: JPG, PNG. Máx 2MB.</small>
-                            </div>
+                            <div class="form-text">Si no deseas cambiar tu contraseña actual, ignora este campo.</div>
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-sm-3">
-                                <h6 class="mb-0 mt-2">Nueva Contraseña</h6>
-                            </div>
-                            <div class="col-sm-9 text-secondary">
-                                <input type="password" name="password" class="form-control" placeholder="Dejar en blanco para mantener la actual">
-                            </div>
+                        <div class="d-flex justify-content-end mt-5 border-top pt-4">
+                            <button type="submit" class="btn btn-primary px-5 py-2 fw-bold rounded-pill shadow-sm">
+                                Guardar Cambios
+                            </button>
                         </div>
 
-                        <div class="row">
-                            <div class="col-sm-3"></div>
-                            <div class="col-sm-9 text-secondary">
-                                <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
-                            </div>
-                        </div>
                     </form>
-
                 </div>
             </div>
         </div>
