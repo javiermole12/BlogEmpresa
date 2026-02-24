@@ -7,7 +7,8 @@ HubCorp es una aplicación web dinámica diseñada para la comunicación interna
 ## 🚀 Características
 
 - **Gestión de Usuarios:** Sistema de Login y perfiles con avatares dinámicos.
-- **Sistema de Roles:** - `Admin`: Control total, edición y borrado de cualquier noticia.
+- **Sistema de Roles:**
+  - `Admin`: Control total, edición y borrado de cualquier noticia.
   - `Redactor`: Puede publicar y gestionar sus propios artículos.
   - `Usuario`: Visualización y participación mediante comentarios.
 - **Tablón Dinámico:** Noticias categorizadas con imágenes y formatos de fecha optimizados.
