@@ -57,3 +57,7 @@ INSERT INTO posts (titulo, contenido, imagen, autor_id, fecha_publicacion) VALUE
 ('Bienvenida al nuevo Portal', 'Estamos muy contentos de inaugurar este espacio para todos los trabajadores.', 'oficina.jpg', 1, '2023-10-01 09:00:00'),
 ('Normativa de vacaciones 2024', 'Recordad que debéis solicitar las vacaciones antes del 30 de marzo.', 'calendario.jpg', 2, '2023-10-02 10:30:00'),
 ('Menú de la cafetería', 'Esta semana tenemos menú especial por el aniversario de la empresa.', 'comida.jpg', 3, '2023-10-03 12:15:00');
+
+ALTER TABLE usuarios 
+ADD COLUMN intentos_fallidos INT DEFAULT 0,
+ADD COLUMN bloqueado_hasta DATETIME NULL;

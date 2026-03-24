@@ -1,26 +1,30 @@
 <?php
-// logout.php
-
-// 1. Incluimos la conexión para poder usar la constante BASE_URL
 require 'includes/conexion.php';
 
-// 2. Destruir todas las variables de sesión
-$_SESSION = array();
-
-// 3. Borrar la cookie de sesión del navegador
-// Esto es importante para la auditoría de seguridad: invalida el token del lado del cliente.
-if (ini_get("session.use_cookies")) {
-    $params = session_get_cookie_params();
-    setcookie(session_name(), '', time() - 42000,
-        $params["path"], $params["domain"],
-        $params["secure"], $params["httponly"]
-    );
+// 1. ESCUDO 1: BLOQUEAR MÉTODO GET
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $_SESSION['mensaje'] = "⚠️ Acción no permitida. Usa el botón de Cerrar Sesión del menú.";
+    $_SESSION['tipo_mensaje'] = "warning";
+    header("Location: index.php");
+    exit();
 }
 
-// 4. Destruir la sesión en el servidor
+// 2. ESCUDO 2: VERIFICAR TOKEN CSRF
+if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    $_SESSION['mensaje'] = "🛑 Bloqueo de seguridad: Petición CSRF inválida.";
+    $_SESSION['tipo_mensaje'] = "danger";
+    header("Location: index.php");
+    exit();
+}
+
+// 3. Destruir sesión y cookie
+$_SESSION = array();
+if (ini_get("session.use_cookies")) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+}
 session_destroy();
 
-// 5. Redirigir al usuario al Login
 header("Location: " . BASE_URL . "login.php");
 exit();
 ?>

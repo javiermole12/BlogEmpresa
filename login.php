@@ -10,49 +10,88 @@ if (isset($_SESSION['usuario_id'])) {
 }
 
 $errores = '';
+// --- CONFIGURACIÓN DE SEGURIDAD ---
+$max_intentos = 3;          // Número de intentos antes de bloquear
+$minutos_bloqueo = 15;      // Tiempo de castigo en minutos
 
-// Verificamos si el formulario ha sido enviado (Botón "Ingresar")
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
-    // Recogemos los datos y los "limpiamos" para evitar inyecciones básicas
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    // Recogemos datos
+    $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    // Validamos que no estén vacíos
     if (empty($email) || empty($password)) {
         $errores = "Por favor, rellena todos los campos.";
     } else {
-        // Consultamos a la base de datos
-        $sql = "SELECT * FROM usuarios WHERE email = '$email' LIMIT 1";
-        $resultado = mysqli_query($conn, $sql);
+        
+        // 1. Buscar al usuario por email (Usamos sentencias preparadas por seguridad)
+        $sql = "SELECT * FROM usuarios WHERE email = ?";
+        $stmt = mysqli_prepare($conn, $sql);
+        mysqli_stmt_bind_param($stmt, "s", $email);
+        mysqli_stmt_execute($stmt);
+        $resultado = mysqli_stmt_get_result($stmt);
 
         if (mysqli_num_rows($resultado) == 1) {
-            // El usuario existe, ahora verificamos la contraseña
             $usuario = mysqli_fetch_assoc($resultado);
-            
-            // password_verify compara la contraseña escrita con el HASH de la BD
-            // Recuerda: tus usuarios de prueba tienen la contraseña "1234"
-            if (password_verify($password, $usuario['password'])) {
+
+            // 2. Comprobar si la cuenta está BLOQUEADA
+            if ($usuario['bloqueado_hasta'] != NULL && strtotime($usuario['bloqueado_hasta']) > time()) {
                 
-                // ¡LOGIN CORRECTO! - Guardamos datos en la Sesión
-                $_SESSION['usuario_id'] = $usuario['id'];
-                $_SESSION['nombre'] = $usuario['nombre'];
-                $_SESSION['rol'] = $usuario['rol'];
-                $_SESSION['avatar'] = $usuario['avatar'];
-
-                // Redirigimos según el rol
-                if ($usuario['rol'] == 'admin') {
-                    header("Location: admin/index.php"); // Al panel de control
-                } else {
-                    header("Location: index.php"); // Al blog normal
-                }
-                exit();
-
+                // Calcular cuántos minutos le quedan de bloqueo
+                $tiempo_restante = ceil((strtotime($usuario['bloqueado_hasta']) - time()) / 60);
+                $errores = "🔒 Cuenta bloqueada por seguridad tras varios intentos fallidos. Inténtalo de nuevo en $tiempo_restante minutos.";
+                
             } else {
-                $errores = "La contraseña es incorrecta.";
+                
+                // 3. La cuenta NO está bloqueada. Verificamos la contraseña.
+                if (password_verify($password, $usuario['password'])) {
+                    
+                    // LOGIN CORRECTO -> Reseteamos los fallos a 0
+                    $sql_reset = "UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?";
+                    $stmt_reset = mysqli_prepare($conn, $sql_reset);
+                    mysqli_stmt_bind_param($stmt_reset, "i", $usuario['id']);
+                    mysqli_stmt_execute($stmt_reset);
+
+                    // Guardamos la sesión
+                    $_SESSION['usuario_id'] = $usuario['id'];
+                    $_SESSION['nombre'] = $usuario['nombre'];
+                    $_SESSION['rol'] = $usuario['rol'];
+                    $_SESSION['avatar'] = $usuario['avatar'];
+
+                    // Redirigimos según el rol
+                    if ($usuario['rol'] == 'admin') {
+                        header("Location: admin/index.php");
+                    } else {
+                        header("Location: index.php");
+                    }
+                    exit();
+
+                } else {
+                    // LOGIN FALLIDO (Contraseña incorrecta)
+                    $intentos_actuales = $usuario['intentos_fallidos'] + 1;
+                    $fecha_bloqueo = NULL;
+
+                    if ($intentos_actuales >= $max_intentos) {
+                        // Ha llegado al límite: Calculamos la fecha/hora de desbloqueo
+                        $fecha_bloqueo = date('Y-m-d H:i:s', strtotime("+$minutos_bloqueo minutes"));
+                        $errores = "🔒 Has superado el límite de intentos. Cuenta bloqueada por $minutos_bloqueo minutos.";
+                    } else {
+                        // Aún le quedan intentos
+                        $intentos_restantes = $max_intentos - $intentos_actuales;
+                        $errores = "Credenciales incorrectas. Te quedan $intentos_restantes intentos.";
+                    }
+
+                    // Actualizamos la base de datos con el nuevo fallo
+                    $sql_fallo = "UPDATE usuarios SET intentos_fallidos = ?, bloqueado_hasta = ? WHERE id = ?";
+                    $stmt_fallo = mysqli_prepare($conn, $sql_fallo);
+                    mysqli_stmt_bind_param($stmt_fallo, "isi", $intentos_actuales, $fecha_bloqueo, $usuario['id']);
+                    mysqli_stmt_execute($stmt_fallo);
+                }
             }
         } else {
-            $errores = "No existe ninguna cuenta con ese email.";
+            // MITIGACIÓN DE ENUMERACIÓN DE USUARIOS:
+            // Si el email no existe, damos el mismo error genérico para no darle pistas al hacker.
+            $errores = "Credenciales incorrectas.";
         }
     }
 }

@@ -1,6 +1,11 @@
 <?php 
 // Usamos __DIR__ para que PHP busque conexion.php DENTRO de la carpeta 'includes'
 include_once __DIR__ . '/conexion.php'; 
+
+// --- SEGURIDAD: GENERAR TOKEN CSRF ---
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -76,9 +81,12 @@ include_once __DIR__ . '/conexion.php';
                     <li><hr class="dropdown-divider"></li>
                     
                     <li>
-                        <a class="dropdown-item py-2 text-danger d-flex align-items-center fw-medium" href="<?php echo BASE_URL; ?>logout.php">
-                            <i class="bi bi-box-arrow-right me-2 fs-5"></i> Cerrar Sesión
-                        </a>
+                        <form action="<?php echo BASE_URL; ?>logout.php" method="POST" class="m-0 p-0">
+                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                            <button type="submit" class="dropdown-item py-2 text-danger d-flex align-items-center fw-medium bg-transparent border-0 w-100 text-start">
+                                <i class="bi bi-box-arrow-right me-2 fs-5"></i> Cerrar Sesión
+                            </button>
+                        </form>
                     </li>
                 </ul>
             </li>

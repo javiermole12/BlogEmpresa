@@ -46,7 +46,12 @@ $posts = mysqli_query($conn, $sql_posts);
                 <a href="usuarios.php" class="list-group-item list-group-item-action">👥 Gestionar Usuarios</a>
                 <a href="posts.php" class="list-group-item list-group-item-action">📰 Gestionar Noticias</a>
                 <a href="../index.php" class="list-group-item list-group-item-action text-primary">🏠 Volver al Blog</a>
-                <a href="../logout.php" class="list-group-item list-group-item-action text-danger">🚪 Salir</a>
+                <form action="../logout.php" method="POST" class="m-0 p-0">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                    <button type="submit" class="list-group-item list-group-item-action text-danger border-0 w-100 text-start bg-transparent fw-bold">
+                        🚪 Salir
+                    </button>
+                </form>
             </div>
         </div>
 
