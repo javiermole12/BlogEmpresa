@@ -8,54 +8,65 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 'admin') {
     exit();
 }
 
-// 2. LÓGICA: CAMBIAR ROL (Si se envía el formulario)
 $mensaje = "";
 $tipo_mensaje = "";
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['accion']) && $_POST['accion'] == 'cambiar_rol') {
-    $id_usuario_editar = $_POST['user_id'];
-    $nuevo_rol = $_POST['nuevo_rol'];
-
-    // Evitar que el admin se quite el rol a sí mismo (Seguridad)
-    if ($id_usuario_editar == $_SESSION['usuario_id']) {
-        $mensaje = "❌ No puedes cambiar tu propio rol. Pide a otro admin que lo haga.";
+// ==========================================
+// 1. LÓGICA DE PROCESAMIENTO (PROTEGIDA)
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    
+    // 🛡️ ESCUDO GLOBAL CSRF PARA CUALQUIER ACCIÓN POST
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $mensaje = "🛑 Bloqueo de seguridad: Token CSRF inválido o caducado.";
         $tipo_mensaje = "danger";
     } else {
-        // Actualizamos en la BD
-        $sql_update = "UPDATE usuarios SET rol = ? WHERE id = ?";
-        $stmt = mysqli_prepare($conn, $sql_update);
-        mysqli_stmt_bind_param($stmt, "si", $nuevo_rol, $id_usuario_editar);
         
-        if (mysqli_stmt_execute($stmt)) {
-            $mensaje = "✅ Rol actualizado correctamente.";
-            $tipo_mensaje = "success";
-        } else {
-            $mensaje = "Error al cambiar rol.";
-            $tipo_mensaje = "danger";
+        // --- ACCIÓN A: CAMBIAR ROL ---
+        if (isset($_POST['accion']) && $_POST['accion'] == 'cambiar_rol') {
+            $id_usuario_editar = $_POST['user_id'];
+            $nuevo_rol = $_POST['nuevo_rol'];
+
+            if ($id_usuario_editar == $_SESSION['usuario_id']) {
+                $mensaje = "❌ No puedes cambiar tu propio rol. Pide a otro admin que lo haga.";
+                $tipo_mensaje = "danger";
+            } else {
+                $sql_update = "UPDATE usuarios SET rol = ? WHERE id = ?";
+                $stmt = mysqli_prepare($conn, $sql_update);
+                mysqli_stmt_bind_param($stmt, "si", $nuevo_rol, $id_usuario_editar);
+                
+                if (mysqli_stmt_execute($stmt)) {
+                    $mensaje = "✅ Rol actualizado correctamente.";
+                    $tipo_mensaje = "success";
+                } else {
+                    $mensaje = "Error al cambiar rol.";
+                    $tipo_mensaje = "danger";
+                }
+            }
+        }
+
+        // --- ACCIÓN B: BORRAR USUARIO (Ahora seguro por POST) ---
+        if (isset($_POST['accion']) && $_POST['accion'] == 'borrar_usuario' && isset($_POST['id_borrar'])) {
+            $id_borrar = $_POST['id_borrar'];
+
+            if ($id_borrar == $_SESSION['usuario_id']) {
+                $mensaje = "❌ No puedes borrar tu propia cuenta.";
+                $tipo_mensaje = "danger";
+            } else {
+                $sql_del = "DELETE FROM usuarios WHERE id = ?";
+                $stmt_del = mysqli_prepare($conn, $sql_del);
+                mysqli_stmt_bind_param($stmt_del, "i", $id_borrar);
+                if (mysqli_stmt_execute($stmt_del)) {
+                    $mensaje = "🗑️ Usuario eliminado correctamente.";
+                    $tipo_mensaje = "warning";
+                }
+            }
         }
     }
 }
 
-// 3. LÓGICA: BORRAR USUARIO (Si viene por GET action=borrar)
-// Normalmente esto se hace en un archivo aparte, pero para ahorrar archivos lo incluyo aquí protegido.
-if (isset($_GET['action']) && $_GET['action'] == 'borrar' && isset($_GET['id'])) {
-    $id_borrar = $_GET['id'];
 
-    if ($id_borrar == $_SESSION['usuario_id']) {
-        $mensaje = "❌ No puedes borrar tu propia cuenta.";
-        $tipo_mensaje = "danger";
-    } else {
-        $sql_del = "DELETE FROM usuarios WHERE id = ?";
-        $stmt_del = mysqli_prepare($conn, $sql_del);
-        mysqli_stmt_bind_param($stmt_del, "i", $id_borrar);
-        if (mysqli_stmt_execute($stmt_del)) {
-            $mensaje = "🗑️ Usuario eliminado correctamente.";
-            $tipo_mensaje = "warning";
-        }
-    }
-}
-
-// 4. OBTENER LISTADO DE USUARIOS
+// 2. OBTENER LISTADO DE USUARIOS
 $sql_lista = "SELECT * FROM usuarios ORDER BY id DESC";
 $usuarios = mysqli_query($conn, $sql_lista);
 ?>
@@ -126,11 +137,15 @@ $usuarios = mysqli_query($conn, $sql_lista);
 
                             <td class="text-end pe-4">
                                 <?php if ($user['id'] != $_SESSION['usuario_id']): ?>
-                                    <a href="usuarios.php?action=borrar&id=<?php echo $user['id']; ?>" 
-                                       class="btn btn-sm btn-danger"
-                                       onclick="return confirm('⚠️ ¡CUIDADO! ⚠️\n\nEstás a punto de borrar al usuario: <?php echo $user['nombre']; ?>.\n\nEsto también borrará TODOS sus posts.\n¿Estás seguro?');">
-                                        🗑️ Borrar
-                                    </a>
+                                    <form id="form-borrar-<?php echo $user['id']; ?>" action="usuarios.php" method="POST" class="m-0 d-inline">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                        <input type="hidden" name="accion" value="borrar_usuario">
+                                        <input type="hidden" name="id_borrar" value="<?php echo $user['id']; ?>">   
+                                        <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 shadow-sm" data-bs-toggle="modal" 
+                                        data-bs-target="#modalConfirmarBorrado"data-form-id="form-borrar-<?php echo $user['id']; ?>">
+                                            🗑️ Borrar
+                                        </button>
+                                    </form>
                                 <?php else: ?>
                                     <span class="badge bg-success">TÚ</span>
                                 <?php endif; ?>
@@ -143,5 +158,45 @@ $usuarios = mysqli_query($conn, $sql_lista);
         </div>
     </div>
 </div>
+<div class="modal fade" id="modalConfirmarBorrado" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+        <h5 class="modal-title fw-bold text-danger">⚠️ Confirmar Eliminación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4 px-4 fs-5 text-center text-dark">
+        ¿Estás seguro de que deseas borrar a este usuario?<br>
+        <small class="text-muted fs-6">Esta acción borrará también todos sus posts y no se puede deshacer.</small>
+      </div>
+      <div class="modal-footer border-top-0 justify-content-center pt-0 pb-4">
+        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" id="btnConfirmarBorrar" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">Sí, borrar usuario</button>
+      </div>
+    </div>
+  </div>
+</div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var modalBorrado = document.getElementById('modalConfirmarBorrado');
+        var formIdToSubmit = null; // Variable para guardar qué formulario queremos enviar
+        
+        if(modalBorrado) {
+            // Cuando se abre el modal, guardamos el ID del formulario correspondiente
+            modalBorrado.addEventListener('show.bs.modal', function (event) {
+                var boton = event.relatedTarget;
+                formIdToSubmit = boton.getAttribute('data-form-id');
+            });
+
+            // Cuando hacen clic en el botón rojo de "Sí, borrar" dentro del modal...
+            document.getElementById('btnConfirmarBorrar').addEventListener('click', function() {
+                if(formIdToSubmit) {
+                    // Buscamos el formulario oculto y lo enviamos
+                    document.getElementById(formIdToSubmit).submit();
+                }
+            });
+        }
+    });
+</script>
 <?php include '../includes/footer.php'; ?>
