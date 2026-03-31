@@ -16,9 +16,36 @@ $tipo_mensaje = "";
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // Recoger datos (limpios)
-    $nombre = mysqli_real_escape_string($conn, $_POST['nombre']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $cargo = mysqli_real_escape_string($conn, $_POST['cargo']);
+    $nombre_raw = trim($_POST['nombre']);
+    $email_raw = trim($_POST['email']);
+    $cargo_raw = trim($_POST['cargo']);
+
+    // Validaciones estrictas
+    if (empty($nombre_raw) || strlen($nombre_raw) < 3) {
+        $mensaje = "El nombre es inválido (mínimo 3 caracteres).";
+        $tipo_mensaje = "danger";
+    }
+    if (!filter_var($email_raw, FILTER_VALIDATE_EMAIL)) {
+        $mensaje = "El formato del email proporcionado no es válido.";
+        $tipo_mensaje = "danger";
+    }
+    if (!empty($_POST['password'])) {
+        $pass_nueva = $_POST['password'];
+        $pass_confirma = $_POST['password_confirm'] ?? '';
+        
+        if (strlen($pass_nueva) < 4) {
+            $mensaje = "La nueva contraseña debe tener al menos 4 caracteres.";
+            $tipo_mensaje = "danger";
+        } elseif ($pass_nueva !== $pass_confirma) {
+            $mensaje = "Las contraseñas nuevas no coinciden.";
+            $tipo_mensaje = "danger";
+        }
+    }
+
+    // Escapar datos para la BD SOLO una vez validados
+    $nombre = mysqli_real_escape_string($conn, $nombre_raw);
+    $email = mysqli_real_escape_string($conn, $email_raw);
+    $cargo = mysqli_real_escape_string($conn, $cargo_raw);
     
     // -- LÓGICA DE SUBIDA DE IMAGEN (AVATAR) --
     $avatar_nombre = $_SESSION['avatar']; // Por defecto mantenemos el actual
@@ -73,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $mensaje = "Perfil actualizado correctamente.";
             $tipo_mensaje = "success";
         } else {
-            $mensaje = "Error al actualizar: " . mysqli_error($conn);
+            error_log("Fallo SQL al actualizar perfil (ID $id_usuario): " . mysqli_error($conn));
+            $mensaje = "No se pudo actualizar el perfil por un error interno.";
             $tipo_mensaje = "danger";
         }
     }
@@ -187,7 +215,11 @@ $usuario = mysqli_fetch_assoc($res_user);
                             <label class="form-label text-muted small fw-bold text-danger">Seguridad de la Cuenta</label>
                             <div class="input-group mb-2">
                                 <span class="input-group-text bg-light border-end-0">🔑</span>
-                                <input type="password" name="password" class="form-control border-start-0 ps-0" placeholder="Nueva contraseña (dejar en blanco para no cambiar)">
+                                <input type="password" name="password" class="form-control border-start-0 ps-0" placeholder="Nueva contraseña (en blanco para mantener)">
+                            </div>
+                            <div class="input-group mb-2 mt-2">
+                                <span class="input-group-text bg-light border-end-0">🔄</span>
+                                <input type="password" name="password_confirm" class="form-control border-start-0 ps-0" placeholder="Confirmar nueva contraseña">
                             </div>
                             <div class="form-text">Si no deseas cambiar tu contraseña actual, ignora este campo.</div>
                         </div>

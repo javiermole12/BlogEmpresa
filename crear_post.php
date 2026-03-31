@@ -59,22 +59,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // 3. INSERTAR EN BASE DE DATOS
+    /// 3. INSERTAR EN BASE DE DATOS
     if (empty($errores)) {
+        // NOTA: Recuerda cambiar 'posts_falso' por 'posts' cuando termines de hacer las capturas
         $sql = "INSERT INTO posts (titulo, contenido, imagen, autor_id, fecha_publicacion) VALUES (?, ?, ?, ?, NOW())";
-        
-        $stmt = mysqli_prepare($conn, $sql);
-        // sssi: string, string, string (puede ser null), integer
-        mysqli_stmt_bind_param($stmt, "sssi", $titulo, $contenido, $nombre_imagen, $autor_id);
-        
-        if (mysqli_stmt_execute($stmt)) {
+
+        try {
+            $stmt = mysqli_prepare($conn, $sql);
+            // sssi: string, string, string (puede ser null), integer
+            mysqli_stmt_bind_param($stmt, "sssi", $titulo, $contenido, $nombre_imagen, $autor_id);
+            mysqli_stmt_execute($stmt);
+
             $exito = true;
-            // Redirigir
             header("refresh:2;url=index.php"); 
-        } else {
-            $errores[] = "Error de base de datos: " . mysqli_error($conn);
+            mysqli_stmt_close($stmt);
+
+        } catch (mysqli_sql_exception $e) {
+            // ¡Atrapamos la explosión antes de que la vea el usuario!
+            
+            // 1. Guardamos el error real en el log del servidor
+            error_log("Fallo SQL al crear post: " . $e->getMessage());
+            
+            // 2. Le damos el mensaje genérico y seguro al usuario
+            $errores[] = "No se ha podido publicar el artículo debido a un error técnico.";
         }
-        mysqli_stmt_close($stmt);
     }
 }
 ?>

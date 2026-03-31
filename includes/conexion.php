@@ -17,7 +17,10 @@ $conn = mysqli_connect($host, $usuario, $password, $base_datos);
 
 // Verificar conexión
 if (!$conn) {
-    die("Error de conexión: " . mysqli_connect_error());
+    // El detalle técnico va al log del servidor
+    error_log("Error crítico de conexión a BD: " . mysqli_connect_error());
+    // El usuario solo ve un mensaje genérico
+    die("Error interno del servidor. Por favor, inténtelo de nuevo más tarde.");
 }
 
 // Establecer codificación de caracteres (evita problemas con tildes)
@@ -25,5 +28,5 @@ mysqli_set_charset($conn, "utf8");
 
 // Definir la ruta raíz del proyecto (AJUSTA ESTO SI TU CARPETA SE LLAMA DISTINTO)
 // Esto es vital para que los enlaces funcionen desde la carpeta /admin/ también
-define('BASE_URL', 'http://localhost/blogEmpresa/');
+define('BASE_URL', 'http://localhost/BlogEmpresa/');
 ?>

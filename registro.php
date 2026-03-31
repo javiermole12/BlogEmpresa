@@ -27,10 +27,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password_confirm = $_POST['password_confirm'];
 
     // Validaciones
-    if (empty($nombre)) { $errores['nombre'] = "El nombre es obligatorio."; }
-    if (empty($email)) { $errores['email'] = "El email es obligatorio."; }
-    if (empty($password)) { $errores['password'] = "La contraseña es obligatoria."; }
-    if ($password !== $password_confirm) { $errores['password'] = "Las contraseñas no coinciden."; }
+    if (empty($nombre) || strlen($nombre) < 3) { 
+        $errores['nombre'] = "El nombre es obligatorio y debe tener al menos 3 caracteres."; 
+    }
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) { 
+        $errores['email'] = "Debes proporcionar un formato de email válido."; 
+    }
+    if (empty($password) || strlen($password) < 4) { 
+        // ¡El backend ahora también exige el mínimo!
+        $errores['password'] = "La contraseña debe tener al menos 4 caracteres."; 
+    } elseif ($password !== $password_confirm) { 
+        $errores['password'] = "Las contraseñas no coinciden."; 
+    }
+    if (strlen($cargo) > 50) {
+        $errores['cargo'] = "El nombre del cargo es demasiado largo.";
+    }
 
     // Comprobar email
     if (empty($errores)) {
@@ -57,7 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_stmt_execute($stmt)) {
             $exito = true;
         } else {
-            $errores['general'] = "Error al registrar: " . mysqli_error($conn);
+            error_log("Fallo SQL en registro.php: " . mysqli_error($conn));
+            $errores['general'] = "No se ha podido completar el registro debido a un error técnico.";
         }
         mysqli_stmt_close($stmt);
     }
